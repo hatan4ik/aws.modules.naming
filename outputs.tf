@@ -9,7 +9,7 @@ output "names" {
 
   precondition {
     condition     = alltrue([for name in values(local.names) : length(name) <= var.name_max_length])
-    error_message = "Every generated name must fit within name_max_length; do not silently truncate names."
+    error_message = "Every generated name must fit within name_max_length (${var.name_max_length}); do not silently truncate names. Too long: ${join(", ", [for key, name in local.names : "${key}=${name} (${length(name)})" if length(name) > var.name_max_length])}."
   }
 }
 

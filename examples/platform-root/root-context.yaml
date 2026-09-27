@@ -1,0 +1,8 @@
+# Reviewed, non-secret context shared by every root of the platform. It mirrors
+# the shape of infra/active/root-context.yaml in the platform repository, which
+# is where the live sandbox roots read the same three tags and the repository.
+repository: hatan4ik/devops-aws-infra
+base_tags:
+  Application: platform
+  CostCenter: platform-bootstrap
+  Owner: hatan4ik

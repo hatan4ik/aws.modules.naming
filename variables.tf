@@ -37,7 +37,12 @@ variable "name_components" {
   nullable    = false
 
   validation {
-    condition     = length(var.name_components) > 0 && alltrue([for component in var.name_components : component == lower(trimspace(component)) && can(regex("^[a-z0-9][a-z0-9-]*$", component)) && !endswith(component, "-")])
+    # `&&` does not short-circuit in Terraform 1.7, so a null component is
+    # rejected with a conditional instead of failing inside trimspace().
+    condition = length(var.name_components) > 0 && alltrue([
+      for component in var.name_components :
+      component == null ? false : (component == lower(trimspace(component)) && can(regex("^[a-z0-9][a-z0-9-]*$", component)) && !endswith(component, "-"))
+    ])
     error_message = "name_components must contain one or more lowercase alphanumeric or hyphenated components."
   }
 }
@@ -49,7 +54,19 @@ variable "additional_names" {
   nullable    = false
 
   validation {
-    condition     = alltrue([for name, components in var.additional_names : can(regex("^[a-z][a-z0-9_]*$", name)) && length(components) > 0 && alltrue([for component in components : component == lower(trimspace(component)) && can(regex("^[a-z0-9][a-z0-9-]*$", component)) && !endswith(component, "-")])])
+    # A null list or a null component is rejected with a conditional, because
+    # `&&` does not short-circuit in Terraform 1.7.
+    condition = alltrue([
+      for name, components in var.additional_names :
+      can(regex("^[a-z][a-z0-9_]*$", name)) && (
+        components == null ? false : (
+          length(components) > 0 && alltrue([
+            for component in components :
+            component == null ? false : (component == lower(trimspace(component)) && can(regex("^[a-z0-9][a-z0-9-]*$", component)) && !endswith(component, "-"))
+          ])
+        )
+      )
+    ])
     error_message = "additional_names keys must be identifiers and every name component must be lowercase alphanumeric or hyphenated."
   }
 }
@@ -76,17 +93,18 @@ variable "name_max_length" {
     condition     = var.name_max_length >= 1 && var.name_max_length <= 128
     error_message = "name_max_length must be between 1 and 128."
   }
-
 }
 
 variable "base_tags" {
-  description = "Required non-empty allocation and ownership tags supplied by the root."
+  description = "Allocation and ownership tags supplied by the root, for example Application, CostCenter, and Owner. Keys and values must be non-empty. The canonical tags Environment, ManagedBy, Repository, and Root always take the module's values, so a base_tags entry with one of those keys is overridden."
   type        = map(string)
   default     = {}
   nullable    = false
 
   validation {
-    condition     = alltrue([for key, value in var.base_tags : length(trimspace(key)) > 0 && length(trimspace(value)) > 0])
+    # A null value is rejected with a conditional, because `&&` does not
+    # short-circuit in Terraform 1.7.
+    condition     = alltrue([for key, value in var.base_tags : value == null ? false : (length(trimspace(key)) > 0 && length(trimspace(value)) > 0)])
     error_message = "base_tags must contain non-empty keys and values."
   }
 }
